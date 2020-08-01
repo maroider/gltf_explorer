@@ -1,0 +1,17 @@
+[package]
+name = "gltf_explorer"
+version = "0.1.0"
+authors = ["Markus Røyset <maroider@protonmail.com>"]
+edition = "2018"
+
+[dependencies]
+chrono = "0.4.13"
+clap = "3.0.0-beta.1"
+fern = "0.6.0"
+gltf = { version = "0.15.2", features = ["KHR_lights_punctual"] }
+iced = { git = "https://github.com/hecrj/iced", rev = "9b77800" }
+iced_futures = { git = "https://github.com/hecrj/iced", rev = "9b77800" }
+iced_graphics = { git = "https://github.com/hecrj/iced", rev = "9b77800" }
+iced_native = { git = "https://github.com/hecrj/iced", rev = "9b77800" }
+log = "0.4.11"
+native-dialog = { git = "https://github.com/maroider/native-dialog-rs", rev = "fb2a1c1" }
