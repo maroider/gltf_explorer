@@ -19,7 +19,7 @@ pub struct Tree<'a, Message, Renderer> {
 
 impl<'a, Message, Renderer> Tree<'a, Message, Renderer>
 where
-    Renderer: iced_native::widget::row::Renderer + iced_native::widget::space::Renderer + 'a,
+    Renderer: self::Renderer + 'a,
     Message: 'a,
 {
     pub fn new<T, F>(mut traverser: T, mut f: F) -> Self
@@ -183,7 +183,8 @@ where
         layout: Layout<'_>,
         cursor_position: Point,
     ) -> Renderer::Output {
-        renderer.draw::<Message>(
+        self::Renderer::draw::<Message>(
+            renderer,
             defaults,
             &self.elements,
             &self.levels,
@@ -202,7 +203,13 @@ where
     }
 }
 
-pub trait Renderer: iced_native::Renderer + Sized {
+pub trait Renderer:
+    iced_native::Renderer
+    + iced_native::widget::row::Renderer
+    + iced_native::widget::space::Renderer
+    + iced_native::widget::text::Renderer
+    + Sized
+{
     fn draw<'a, Message>(
         &mut self,
         defaults: &Self::Defaults,
@@ -215,7 +222,7 @@ pub trait Renderer: iced_native::Renderer + Sized {
 
 impl<B> Renderer for iced_graphics::Renderer<B>
 where
-    B: iced_graphics::Backend,
+    B: iced_graphics::Backend + iced_graphics::backend::Text,
 {
     fn draw<'a, Message>(
         &mut self,

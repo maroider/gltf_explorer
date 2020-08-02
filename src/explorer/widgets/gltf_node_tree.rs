@@ -10,12 +10,7 @@ pub fn tree<'a, Message, Renderer>(
     state: &'a mut State,
 ) -> Scrollable<'a, Message, Renderer>
 where
-    Renderer: iced_native::widget::row::Renderer
-        + iced_native::widget::space::Renderer
-        + iced_native::widget::text::Renderer
-        + iced_native::scrollable::Renderer
-        + super::tree::Renderer
-        + 'a,
+    Renderer: iced_native::scrollable::Renderer + super::tree::Renderer + 'a,
     Message: 'a,
 {
     Scrollable::new(&mut state.scrollable)
