@@ -14,7 +14,7 @@ pub struct Tree<'a, Message, Renderer> {
     max_height: u32,
     align_items: Align,
     elements: Vec<Element<'a, Message, Renderer>>,
-    levels: Vec<usize>,
+    levels: Vec<LevelInfo>,
 }
 
 impl<'a, Message, Renderer> Tree<'a, Message, Renderer>
@@ -29,59 +29,103 @@ where
         F: FnMut(&T::Item) -> Element<'a, Message, Renderer>,
     {
         let (elements, levels) = {
-            let mut elements = Vec::with_capacity(16);
-            let mut levels: Vec<usize> = Vec::with_capacity(16);
-
-            let tree_item = |elem, level: usize| {
-                use iced_native::widget::{Row, Space};
-                Row::new()
-                    .push(Space::new(
-                        Length::Units(level.saturating_mul(20) as u16),
-                        Length::Shrink,
-                    ))
-                    .push(elem)
-                    .into()
-            };
+            let mut items = Vec::with_capacity(16);
+            let mut elem_stack = Vec::with_capacity(16);
+            let mut levels: Vec<LevelInfo> = Vec::with_capacity(16);
 
             loop {
-                let mut level = 0;
+                // println!("elem_stack: {:?}", elem_stack);
+                // println!("levels: {:?}", levels);
+
                 if let Some(first_child) = traverser.first_child() {
-                    levels.push(
-                        levels
-                            .last()
-                            .map(|l| {
-                                level = l.saturating_add(1);
-                                level
-                            })
-                            .unwrap_or(0),
-                    );
-                    elements.push(tree_item(f(&first_child), level));
+                    let level = levels
+                        .last()
+                        .map(|l| l.level().saturating_add(1))
+                        .unwrap_or(0);
+                    let level = LevelInfo::OnlyChild(level);
+
+                    levels.push(level);
+                    elem_stack.push((items.len(), None));
+                    items.push(first_child);
                 } else if let Some(next_sibling) = traverser.next_sibling() {
-                    levels.push(
-                        levels
-                            .last()
-                            .map(|l| {
-                                level = *l;
-                                level
-                            })
-                            .unwrap_or(0),
-                    );
-                    elements.push(tree_item(f(&next_sibling), level));
+                    let level = LevelInfo::LastChild(levels.last().map(|l| l.level()).unwrap_or(0));
+                    levels.push(level);
+
+                    if let Some((prev_sibling, _)) = elem_stack.last() {
+                        if let Some(prev_sibling_level) = levels.get_mut(*prev_sibling) {
+                            *prev_sibling_level = match *prev_sibling_level {
+                                LevelInfo::LastChild(l) => LevelInfo::Sibling(l),
+                                LevelInfo::OnlyChild(l) => LevelInfo::FirstChild(l),
+                                l => l,
+                            };
+                        }
+                    }
+                    let prev_sibling = elem_stack.pop();
+
+                    elem_stack.push((items.len(), prev_sibling.map(|(elem, _)| elem)));
+                    items.push(next_sibling);
                 } else if let Some((next_uncle, levels_up)) = traverser.next_uncle() {
-                    levels.push(
-                        levels
-                            .last()
-                            .map(|l| {
-                                level = l.saturating_sub(levels_up);
-                                level
-                            })
-                            .unwrap_or(0),
-                    );
-                    elements.push(tree_item(f(&next_uncle), level));
+                    let level = levels
+                        .last()
+                        .map(|l| l.level().saturating_sub(levels_up))
+                        .unwrap_or(0);
+                    let level = LevelInfo::LastChild(level);
+
+                    levels.push(level);
+
+                    let prev_sibling_stack_idx = elem_stack.len() - levels_up - 1;
+                    let prev_sibling = elem_stack
+                        .get(prev_sibling_stack_idx)
+                        .map(|(elem, _)| *elem);
+                    if let Some(prev_sibling_level) = prev_sibling.and_then(|ls| levels.get_mut(ls))
+                    {
+                        *prev_sibling_level = match *prev_sibling_level {
+                            LevelInfo::LastChild(l) => LevelInfo::Sibling(l),
+                            LevelInfo::OnlyChild(l) => LevelInfo::FirstChild(l),
+                            l => l,
+                        };
+                    }
+
+                    for (idx, _) in elem_stack.drain(prev_sibling_stack_idx + 1..).rev() {
+                        if let Some(level) = levels.get_mut(idx) {
+                            *level = match *level {
+                                LevelInfo::FirstChild(l) => LevelInfo::OnlyChild(l),
+                                LevelInfo::Sibling(l) => LevelInfo::LastChild(l),
+                                l => l,
+                            };
+                        }
+                    }
+
+                    elem_stack.pop();
+
+                    elem_stack.push((items.len(), prev_sibling));
+                    items.push(next_uncle);
                 } else {
                     break;
                 }
             }
+
+            let elements = items
+                .into_iter()
+                .zip(levels.iter())
+                .map(|(item, level)| {
+                    use iced_native::widget::{Row, Space, Text};
+                    Row::new()
+                        .push(Space::new(
+                            Length::Units(level.level().saturating_mul(20) as u16),
+                            Length::Shrink,
+                        ))
+                        .push(Text::new(match level {
+                            LevelInfo::FirstChild(_) => "[F]  ",
+                            LevelInfo::Sibling(_) => "[S]  ",
+                            LevelInfo::LastChild(_) => "[L]  ",
+                            LevelInfo::OnlyChild(_) => "[O]  ",
+                        }))
+                        .push(f(&item))
+                        .into()
+                })
+                .collect();
+
             (elements, levels)
         };
 
@@ -214,7 +258,7 @@ pub trait Renderer:
         &mut self,
         defaults: &Self::Defaults,
         elements: &[Element<'a, Message, Self>],
-        levels: &[usize],
+        levels: &[LevelInfo],
         layout: Layout<'_>,
         cursor_position: Point,
     ) -> Self::Output;
@@ -228,7 +272,7 @@ where
         &mut self,
         defaults: &Self::Defaults,
         elements: &[Element<'a, Message, Self>],
-        levels: &[usize],
+        levels: &[LevelInfo],
         layout: Layout<'_>,
         cursor_position: Point,
     ) -> Self::Output {
@@ -267,6 +311,26 @@ where
 {
     fn from(from: Tree<'a, Message, Renderer>) -> Self {
         Element::new(from)
+    }
+}
+
+// TODO: Better name
+#[derive(Clone, Copy, Debug)]
+pub enum LevelInfo {
+    FirstChild(usize),
+    Sibling(usize),
+    LastChild(usize),
+    OnlyChild(usize),
+}
+
+impl LevelInfo {
+    pub fn level(self) -> usize {
+        match self {
+            Self::FirstChild(level) => level,
+            Self::Sibling(level) => level,
+            Self::LastChild(level) => level,
+            Self::OnlyChild(level) => level,
+        }
     }
 }
 
