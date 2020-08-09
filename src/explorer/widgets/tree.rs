@@ -240,6 +240,10 @@ where
     fn hash_layout(&self, state: &mut Hasher) {
         struct Marker;
         std::any::TypeId::of::<Marker>().hash(state);
+
+        for element in self.elements.iter() {
+            element.hash_layout(state)
+        }
     }
 
     fn overlay(&mut self, _layout: Layout<'_>) -> Option<overlay::Element<'_, Message, Renderer>> {
