@@ -1,0 +1,2 @@
+[alias]
+local-doc = "doc --no-deps --document-private-items -p gltf_explorer -p clap -p gltf -p gltf-json -p iced -p iced_core -p iced_futures -p iced_graphics -p iced_native -p iced_style -p iced_wgpu -p iced_winit -p native-dialog -p wgpu -p winit"

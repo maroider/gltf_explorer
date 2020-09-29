@@ -2,7 +2,7 @@
 
 ## Build local documentation for dependencies
 
-`cargo doc --no-deps --document-private-items --open -p gltf-explorer -p clap -p gltf -p gltf-json -p iced -p iced_core -p iced_futures -p iced_graphics -p iced_native -p iced_style -p iced_wgpu -p iced_winit -p native-dialog -p wgpu -p winit`
+`cargo local-doc`
 
 # Crates used
 | name            | purpose                                                              | license        | link                                                 |
