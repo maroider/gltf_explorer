@@ -1,7 +1,10 @@
 #![forbid(unsafe_code)]
 #![forbid(rust_2018_idioms)]
 
-use std::path::{Path, PathBuf};
+use std::{
+    error::Error,
+    path::{Path, PathBuf},
+};
 
 use clap::Clap;
 use iced::{Application, Settings};
@@ -9,17 +12,18 @@ use log::info;
 
 mod explorer;
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     if args.dump_tree {
         dump_tree(args.file.as_ref().unwrap());
-        return;
+    } else {
+        init_logging();
+        explorer::Explorer::run(Settings {
+            flags: args,
+            ..Default::default()
+        })?;
     }
-    init_logging();
-    explorer::Explorer::run(Settings {
-        flags: args,
-        ..Default::default()
-    });
+    Ok(())
 }
 
 #[derive(Clap, Default)]
