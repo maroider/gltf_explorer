@@ -22,11 +22,12 @@ where
     Renderer: self::Renderer + 'a,
     Message: 'a,
 {
-    pub fn new<T, F>(mut traverser: T, mut f: F) -> Self
+    pub fn new<T, F, E>(mut traverser: T, mut f: F) -> Self
     where
         T: TreeTraverser,
         T::Item: 'a,
-        F: FnMut(&T::Item) -> Element<'a, Message, Renderer>,
+        F: FnMut(&T::Item) -> E,
+        E: Into<Element<'a, Message, Renderer>>,
     {
         let (elements, levels) = {
             let mut items = Vec::with_capacity(16);

@@ -1,22 +1,60 @@
-use iced_native::widget::{
-    scrollable::{self, Scrollable},
-    Text,
+use iced_graphics::{canvas, Rectangle};
+use iced_native::{
+    mouse,
+    widget::{
+        scrollable::{self, Scrollable},
+        Text,
+    },
 };
 
-use super::tree::{Tree, TreeTraverser};
+use super::{
+    canvas_background::CanvasBackground,
+    tree::{Tree, TreeTraverser},
+};
 
-pub fn tree<'a, Message, Renderer>(
+pub fn tree<'a, Message, B>(
     document: &'a gltf::Document,
     state: &'a mut State,
-) -> Scrollable<'a, Message, Renderer>
+) -> Scrollable<'a, Message, iced_graphics::Renderer<B>>
 where
-    Renderer: iced_native::scrollable::Renderer + super::tree::Renderer + 'a,
+    B: iced_graphics::Backend + iced_graphics::backend::Text + 'a,
     Message: 'a,
 {
-    Scrollable::new(&mut state.scrollable)
-        .push(Tree::new(GltfTraverser::new(document), |node_info| {
-            Text::new(node_info.name.unwrap_or("<unnamed node>")).into()
-        }))
+    Scrollable::new(&mut state.scrollable).push(CanvasBackground::new(
+        CanvasProgram::new(),
+        Tree::new(GltfTraverser::new(document), |node_info| {
+            Text::new(node_info.name.unwrap_or("<unnamed node>"))
+        }),
+    ))
+}
+
+struct CanvasProgram {
+    //
+}
+
+impl CanvasProgram {
+    fn new() -> Self {
+        Self {}
+    }
+}
+
+impl<Message> canvas::Program<Message> for CanvasProgram {
+    fn draw(&self, _bounds: Rectangle, _cursor: canvas::Cursor) -> Vec<canvas::Geometry> {
+        vec![]
+    }
+
+    fn mouse_interaction(&self, _bounds: Rectangle, _cursor: canvas::Cursor) -> mouse::Interaction {
+        mouse::Interaction::Idle
+    }
+
+    fn update(
+        &mut self,
+        _event: canvas::Event,
+        _bounds: Rectangle,
+        _cursor: canvas::Cursor,
+    ) -> Option<Message> {
+        None
+    }
 }
 
 #[derive(Debug)]
